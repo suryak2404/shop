@@ -1,0 +1,141 @@
+<?php
+// Include database connection file
+include('db_connection.php'); // Modify with your actual DB connection file
+
+// Fetch all products from the database for search
+$query = "SELECT product_id, product_name, mrp, gst_percentage FROM products";
+$result = $conn->query($query);
+
+// Initialize product list array for later use
+$products = [];
+if ($result->num_rows > 0) {
+    while ($row = $result->fetch_assoc()) {
+        $products[] = $row;
+    }
+}
+
+// Handle form submission for creating invoice (this part is just a simple demo)
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    // Process sale data here (e.g., save to database)
+    // For simplicity, we are just displaying the submitted data
+    echo "<pre>";
+    print_r($_POST);  // Display the submitted form data (for demonstration)
+    echo "</pre>";
+}
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Page</title>
+    <script>
+        function updateProductDetails(productId) {
+            // Get the product details from the database based on the selected product
+            var products = <?php echo json_encode($products); ?>;
+            var selectedProduct = products.find(product => product.product_id == productId);
+            
+            // Update the MRP and GST values
+            if (selectedProduct) {
+                document.getElementById('mrp_' + productId).value = selectedProduct.mrp;
+                document.getElementById('gst_' + productId).value = selectedProduct.gst_percentage;
+                calculateTotal(productId);  // Recalculate total if any field changes
+            }
+        }
+
+        function calculateTotal(productId) {
+            var quantity = parseInt(document.getElementById('quantity_' + productId).value) || 0;
+            var mrp = parseFloat(document.getElementById('mrp_' + productId).value) || 0;
+            var gstPercentage = parseFloat(document.getElementById('gst_' + productId).value) || 0;
+
+            var totalPrice = mrp * quantity;
+            var gstAmount = totalPrice * (gstPercentage / 100);
+            var totalWithGST = totalPrice + gstAmount;
+
+            // Update total field
+            document.getElementById('total_' + productId).value = totalWithGST.toFixed(2);
+        }
+    </script>
+</head>
+<body>
+
+    <h1>Sales Page</h1>
+
+    <!-- Sales Form -->
+    <form method="POST" action="invoice.php">
+        <table id="sales_table" border="1">
+            <thead>
+                <tr>
+                    <th>Select Product</th>
+                    <th>Quantity</th>
+                    <th>MRP</th>
+                    <th>GST (%)</th>
+                    <th>Total</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="product_rows">
+                <tr id="product_row_1">
+                    <td>
+                        <select name="product_id[]" id="product_id_1" onchange="updateProductDetails(this.value)">
+                            <option value="">Select Product</option>
+                            <?php foreach ($products as $product): ?>
+                                <option value="<?php echo $product['product_id']; ?>"><?php echo $product['product_name']; ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </td>
+                    <td><input type="number" name="quantity[]" id="quantity_1" value="1" onchange="calculateTotal(1)"></td>
+                    <td><input type="number" name="mrp[]" id="mrp_1" readonly></td>
+                    <td><input type="number" name="gst[]" id="gst_1" readonly></td>
+                    <td><input type="text" name="total[]" id="total_1" readonly></td>
+                    <td><button type="button" onclick="removeProductRow(1)">Remove</button></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- Add New Product Row -->
+        <button type="button" onclick="addProductRow()">Add Product</button>
+
+        <br><br>
+
+        <button type="submit">Go to Invoice</button>
+    </form>
+
+    <script>
+        var rowCount = 1;
+
+        function addProductRow() {
+            rowCount++;
+            var newRow = `
+                <tr id="product_row_${rowCount}">
+                    <td>
+                        <select name="product_id[]" id="product_id_${rowCount}" onchange="updateProductDetails(this.value)">
+                            <option value="">Select Product</option>
+                            <?php foreach ($products as $product): ?>
+                                <option value="<?php echo $product['product_id']; ?>"><?php echo $product['product_name']; ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </td>
+                    <td><input type="number" name="quantity[]" id="quantity_${rowCount}" value="1" onchange="calculateTotal(${rowCount})"></td>
+                    <td><input type="number" name="mrp[]" id="mrp_${rowCount}" readonly></td>
+                    <td><input type="number" name="gst[]" id="gst_${rowCount}" readonly></td>
+                    <td><input type="text" name="total[]" id="total_${rowCount}" readonly></td>
+                    <td><button type="button" onclick="removeProductRow(${rowCount})">Remove</button></td>
+                </tr>
+            `;
+            document.getElementById('product_rows').insertAdjacentHTML('beforeend', newRow);
+        }
+
+        function removeProductRow(rowId) {
+            var row = document.getElementById('product_row_' + rowId);
+            row.parentNode.removeChild(row);
+        }
+    </script>
+</body>
+</html>
+
+<?php
+// Close the database connection
+$conn->close();
+?>
