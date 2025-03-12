@@ -1,0 +1,72 @@
+<?php
+// Include database connection file (if needed)
+include('db_connection.php'); // Modify as per your DB connection file
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    // Get the search keyword from the form
+    $search_keyword = $_POST['product_name'];
+    
+    // SQL query to search products by product name
+    $query = "SELECT * FROM products WHERE product_name LIKE ?";
+    $stmt = $conn->prepare($query);
+    $search_param = "%$search_keyword%";
+    $stmt->bind_param("s", $search_param); // 's' denotes the parameter is a string
+    $stmt->execute();
+    $result = $stmt->get_result();
+}
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Products</title>
+</head>
+<body>
+
+    <h1>Search Products</h1>
+
+    <!-- Search form -->
+    <form method="POST" action="">
+        <input type="text" name="product_name" placeholder="Enter product name" required>
+        <button type="submit">Search</button>
+    </form>
+
+    <h2>Search Results:</h2>
+
+    <?php
+    if (isset($result)) {
+        if ($result->num_rows > 0) {
+            // Table to display the products
+            echo "<table border='1'>
+                    <tr>
+                        <th>Product Name</th>
+                        <th>Quantity</th>
+                        <th>MRP</th>
+                        <th>GST Percentage</th>
+                    </tr>";
+
+            // Fetch and display product rows
+            while ($row = $result->fetch_assoc()) {
+                echo "<tr>
+                        <td>" . htmlspecialchars($row['product_name']) . "</td>
+                        <td>" . htmlspecialchars($row['quantity']) . "</td>
+                        <td>" . htmlspecialchars($row['mrp']) . "</td>
+                        <td>" . htmlspecialchars($row['gst_percentage']) . "</td>
+                      </tr>";
+            }
+            echo "</table>";
+        } else {
+            echo "<p>No products found matching the search criteria.</p>";
+        }
+    }
+    ?>
+
+</body>
+</html>
+
+<?php
+// Close database connection if needed
+$conn->close();
+?>
